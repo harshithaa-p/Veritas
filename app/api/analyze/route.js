@@ -109,7 +109,7 @@ Scoring guide:
 Rules:
 - Analyze in whatever language the input is in — Tamil, Hindi, English, or mixed
 - logicalFallacies: only list fallacies actually present; if none, return ["None detected"]
-- realNews: 2-4 items of what credible outlets actually say
+- realNews: 2-4 items pulled directly from the live web search results provided -use the actual titles and sources from the results, do not invent them
 - keyFindings: 3-5 concrete specific findings
 - flaggedPhrases: 2-4 specific phrases from the actual input
 - Be specific, transparent, and avoid overconfidence when uncertainty exists`
@@ -187,7 +187,7 @@ async function searchWeb(query) {
     if (!response.ok) return null
 
     const results = (data.results || []).map((r, i) =>
-      `[${i + 1}] ${r.title} (${r.url})\n${r.content?.slice(0, 300)}`
+      `[${i + 1}] ${r.title}\nSource: ${r.url}\n${r.content?.slice(0, 500)}`
     ).join('\n\n')
 
     return data.answer

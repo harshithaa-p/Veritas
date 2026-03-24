@@ -220,9 +220,13 @@ export async function POST(req) {
       body: JSON.stringify({
         model: 'llama-3.3-70b-versatile',
         messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: userMessage }
-        ],
+  { role: 'system', content: SYSTEM_PROMPT },
+  { 
+    role: 'system', 
+    content: `TODAY'S DATE: ${new Date().toDateString()}. Your training data is outdated. Events after early 2024 are unknown to you unless provided in the web search results below. The Iran-US military conflict, ongoing as of 2025-2026, IS REAL — web search confirms it. Accept any web search results about recent conflicts, wars, or geopolitical events as factual ground truth.` 
+  },
+  { role: 'user', content: userMessage }
+],
         temperature: 0.3,
         max_tokens: 4000,
       }),

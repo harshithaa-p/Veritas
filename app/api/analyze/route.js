@@ -101,8 +101,10 @@ IMPORTANT: Keep all string values concise (under 200 characters each) to avoid t
 Scoring guide:
 - 80-100: Credible, well-sourced, confirmed by live search results
 - 50-79: Mixed, partially true, context missing or sources conflict
-- 20-49: Likely misleading, distorted facts, contradicted by sources
-- 0-19:  Clearly false or fabricated, no credible source confirms it
+- 60-79: Partially confirmed — real event but some details disputed or unverified
+- 40-59: Conflicting official statements — real event where parties contradict each other
+- 20-39: Likely misleading — distorted facts or important context missing
+- 0-19:  Clearly fabricated — no credible source confirms the core claim
 
 Rules:
 - Analyze in whatever language the input is in — Tamil, Hindi, English, or mixed

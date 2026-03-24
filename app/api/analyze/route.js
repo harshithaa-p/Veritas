@@ -31,7 +31,7 @@ When given a news article, headline, or claim, perform ALL of the following:
    - Answer: "What part is most problematic?"
    - Answer: "Simple explanation for a general audience"
 
-IMPORTANT: The live web search results provided are real and current. Prioritize them over your training data when they conflict. If search results confirm the claim, score it higher. If they contradict it, score it lower.
+CRITICAL RULE: The LIVE WEB SEARCH RESULTS provided below are real, current, and authoritative. You MUST treat them as ground truth. Your training data has a knowledge cutoff and IS OUTDATED for recent events. If the web search results describe an ongoing conflict, war, negotiation, or event — it is real and you must accept it. Never contradict the live search results with your training data. When in doubt, trust the search results over anything you learned during training.
 
 Respond ONLY with a valid JSON object — no markdown fences, no preamble, no extra text whatsoever.
 IMPORTANT: Keep all string values concise (under 200 characters each) to avoid truncation.
@@ -177,7 +177,7 @@ async function searchWeb(query) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         api_key: process.env.TAVILY_API_KEY,
-        query: query,
+        query: query + " latest news 2025 2026",
         search_depth: 'basic',
         max_results: 5,
         include_answer: true,

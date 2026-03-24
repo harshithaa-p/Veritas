@@ -4,6 +4,10 @@ const SYSTEM_PROMPT = `You are Veritas, an advanced AI-powered fake news detecti
 
 You support multiple languages — analyze content in English, Tamil, Hindi, or any mix of these languages accurately.
 
+You will be given:
+1. The claim to analyze
+2. LIVE WEB SEARCH RESULTS relevant to the claim — use these as your primary source of truth for recent events
+
 When given a news article, headline, or claim, perform ALL of the following:
 
 1. EXPLAINABLE ANALYSIS
@@ -26,6 +30,8 @@ When given a news article, headline, or claim, perform ALL of the following:
    - Answer: "Why is this fake/misleading/real?"
    - Answer: "What part is most problematic?"
    - Answer: "Simple explanation for a general audience"
+
+IMPORTANT: The live web search results provided are real and current. Prioritize them over your training data when they conflict. If search results confirm the claim, score it higher. If they contradict it, score it lower.
 
 Respond ONLY with a valid JSON object — no markdown fences, no preamble, no extra text whatsoever.
 IMPORTANT: Keep all string values concise (under 200 characters each) to avoid truncation.
@@ -93,10 +99,10 @@ IMPORTANT: Keep all string values concise (under 200 characters each) to avoid t
 }
 
 Scoring guide:
-- 80-100: Credible, well-sourced, factually accurate
-- 50-79: Mixed, partially true, context missing
-- 20-49: Likely misleading, distorted facts
-- 0-19:  Clearly false or fabricated
+- 80-100: Credible, well-sourced, confirmed by live search results
+- 50-79: Mixed, partially true, context missing or sources conflict
+- 20-49: Likely misleading, distorted facts, contradicted by sources
+- 0-19:  Clearly false or fabricated, no credible source confirms it
 
 Rules:
 - Analyze in whatever language the input is in — Tamil, Hindi, English, or mixed
@@ -107,23 +113,19 @@ Rules:
 - Be specific, transparent, and avoid overconfidence when uncertainty exists`
 
 function extractJSON(text) {
-  // Strip markdown fences
   let cleaned = text
     .replace(/^```json\s*/i, '')
     .replace(/^```\s*/i, '')
     .replace(/\s*```$/i, '')
     .trim()
 
-  // Try direct parse first
   try {
     return JSON.parse(cleaned)
   } catch {}
 
-  // Find the outermost { } block
   const start = cleaned.indexOf('{')
   if (start === -1) throw new Error('No JSON object found in response')
 
-  // Walk forward tracking depth to find the matching closing brace
   let depth = 0
   let end = -1
   for (let i = start; i < cleaned.length; i++) {
@@ -141,10 +143,7 @@ function extractJSON(text) {
     } catch {}
   }
 
-  // Response was truncated — try to close all open structures
   let partial = end !== -1 ? cleaned.slice(start, end + 1) : cleaned.slice(start)
-
-  // Count unclosed quotes, braces, brackets
   let inString = false
   let escape = false
   let openBraces = 0
@@ -161,7 +160,6 @@ function extractJSON(text) {
     else if (ch === ']') openBrackets--
   }
 
-  // Remove any trailing incomplete string or value
   partial = partial.replace(/,\s*$/, '')
   if (inString) partial += '"'
   partial += ']'.repeat(Math.max(0, openBrackets))
@@ -170,12 +168,46 @@ function extractJSON(text) {
   return JSON.parse(partial)
 }
 
+async function searchWeb(query) {
+  try {
+    const response = await fetch('https://api.tavily.com/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        api_key: process.env.TAVILY_API_KEY,
+        query: query,
+        search_depth: 'basic',
+        max_results: 5,
+        include_answer: true,
+      }),
+    })
+    const data = await response.json()
+    if (!response.ok) return null
+
+    const results = (data.results || []).map((r, i) =>
+      `[${i + 1}] ${r.title} (${r.url})\n${r.content?.slice(0, 300)}`
+    ).join('\n\n')
+
+    return data.answer
+      ? `Summary: ${data.answer}\n\nSources:\n${results}`
+      : `Sources:\n${results}`
+  } catch {
+    return null
+  }
+}
+
 export async function POST(req) {
   try {
     const { claim } = await req.json()
     if (!claim || claim.trim().length < 5) {
       return NextResponse.json({ error: 'Please provide a claim to analyze.' }, { status: 400 })
     }
+
+    const webContext = await searchWeb(claim.trim())
+
+    const userMessage = webContext
+      ? `LIVE WEB SEARCH RESULTS for this claim:\n${webContext}\n\n---\nNow fact-check this claim using the above search results as your primary source:\n${claim.trim()}`
+      : `Fact-check this claim thoroughly: ${claim.trim()}`
 
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -187,10 +219,10 @@ export async function POST(req) {
         model: 'llama-3.3-70b-versatile',
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: `Fact-check this claim thoroughly: ${claim.trim()}` }
+          { role: 'user', content: userMessage }
         ],
         temperature: 0.3,
-        max_tokens: 4000,  // increased — Tamil/Hindi need more tokens than English
+        max_tokens: 4000,
       }),
     })
 

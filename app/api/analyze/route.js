@@ -186,9 +186,10 @@ async function searchWeb(query) {
     const data = await response.json()
     if (!response.ok) return null
 
-    const results = (data.results || []).map((r, i) =>
-      `[${i + 1}] ${r.title}\nSource: ${r.url}\n${r.content?.slice(0, 500)}`
-    ).join('\n\n')
+    const results = (data.results || [])
+  .sort((a, b) => (b.score || 0) - (a.score || 0))
+  .map((r, i) => `[${i + 1}] ${r.title}\nSource: ${r.url}\n${r.content?.slice(0, 500)}`)
+  .join('\n\n')
 
     return data.answer
       ? `Summary: ${data.answer}\n\nSources:\n${results}`
@@ -229,6 +230,7 @@ export async function POST(req) {
 ],
         temperature: 0.1,
         max_tokens: 4000,
+        seed: 42,
       }),
     })
 
